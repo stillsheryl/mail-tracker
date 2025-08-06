@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import AddOutgoing from '@/components/outgoing/AddOutgoing.vue';
+import SearchFilters from '@/components/outgoing/SearchFilters.vue';
 import { ref, watch } from 'vue';
 
 type OutgoingRecord = {
@@ -24,6 +25,11 @@ type OutgoingRecord = {
 const props = defineProps<{
     success?: string;
     outgoing?: OutgoingRecord[];
+    filters?: {
+        username: string;
+        country: string;
+        region: string;
+    };
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -34,6 +40,13 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const showModal = ref(false);
+
+// Search filters state
+const searchFilters = ref({
+    username: props.filters?.username || '',
+    country: props.filters?.country || '',
+    region: props.filters?.region || '',
+});
 
 // Create a reactive copy of the outgoing records for optimistic updates
 const outgoingRecords = ref<OutgoingRecord[]>(props.outgoing || []);
@@ -103,6 +116,34 @@ const toggleHasBeenSent = async (record: OutgoingRecord) => {
         console.error('Failed to update has_been_sent status:', error);
     }
 };
+
+// Handle search functionality
+const handleSearch = () => {
+    const queryParams = new URLSearchParams();
+    
+    if (searchFilters.value.username) {
+        queryParams.append('username', searchFilters.value.username);
+    }
+    if (searchFilters.value.country) {
+        queryParams.append('country', searchFilters.value.country);
+    }
+    if (searchFilters.value.region) {
+        queryParams.append('region', searchFilters.value.region);
+    }
+    
+    const url = route('offers') + (queryParams.toString() ? '?' + queryParams.toString() : '');
+    router.visit(url);
+};
+
+// Handle clear filters
+const handleClearFilters = () => {
+    searchFilters.value = {
+        username: '',
+        country: '',
+        region: '',
+    };
+    router.visit(route('offers'));
+};
 </script>
 
 <template>
@@ -123,6 +164,13 @@ const toggleHasBeenSent = async (record: OutgoingRecord) => {
             </button>
             <AddOutgoing :open="showModal" @close="showModal = false" />
         </div>
+
+        <!-- Search Filters -->
+        <SearchFilters 
+            v-model="searchFilters"
+            @search="handleSearch"
+            @clear="handleClearFilters"
+        />
 
         <!-- Offers Table -->
         <div>

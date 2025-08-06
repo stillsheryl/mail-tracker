@@ -14,14 +14,32 @@ Route::get('dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::get('outgoing', function () {
-    $outgoing = Outgoing::where('user_id', auth()->id())
-        ->where('has_been_sent', true)
-        ->orderBy('date', 'desc')
-        ->get();
+    $query = Outgoing::where('user_id', auth()->id())
+        ->where('has_been_sent', true);
+    
+    // Apply search filters if present
+    if (request('username')) {
+        $query->where('username', 'like', '%' . request('username') . '%');
+    }
+    
+    if (request('country')) {
+        $query->where('country', 'like', '%' . request('country') . '%');
+    }
+    
+    if (request('region')) {
+        $query->where('region', 'like', '%' . request('region') . '%');
+    }
+    
+    $outgoing = $query->orderBy('date', 'desc')->get();
         
     return Inertia::render('Outgoing', [
         'success' => session('success'),
         'outgoing' => $outgoing,
+        'filters' => [
+            'username' => request('username', ''),
+            'country' => request('country', ''),
+            'region' => request('region', ''),
+        ],
     ]);
 })->middleware(['auth', 'verified'])->name('outgoing');
 
@@ -42,14 +60,32 @@ Route::get('received', function () {
 })->middleware(['auth', 'verified'])->name('received');
 
 Route::get('offers', function () {
-    $outgoing = Outgoing::where('user_id', auth()->id())
-        ->where('has_been_sent', false)
-        ->orderBy('date', 'desc')
-        ->get();
+    $query = Outgoing::where('user_id', auth()->id())
+        ->where('has_been_sent', false);
+    
+    // Apply search filters if present
+    if (request('username')) {
+        $query->where('username', 'like', '%' . request('username') . '%');
+    }
+    
+    if (request('country')) {
+        $query->where('country', 'like', '%' . request('country') . '%');
+    }
+    
+    if (request('region')) {
+        $query->where('region', 'like', '%' . request('region') . '%');
+    }
+    
+    $outgoing = $query->orderBy('date', 'desc')->get();
         
     return Inertia::render('Offers', [
         'success' => session('success'),
         'outgoing' => $outgoing,
+        'filters' => [
+            'username' => request('username', ''),
+            'country' => request('country', ''),
+            'region' => request('region', ''),
+        ],
     ]);
 })->middleware(['auth', 'verified'])->name('offers');
 
