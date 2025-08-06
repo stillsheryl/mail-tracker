@@ -7,10 +7,12 @@ import { Label } from '@/components/ui/label';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { LoaderCircle } from 'lucide-vue-next';
+import { ref } from 'vue';
 
 const form = useForm({
     name: '',
     country: '',
+    region: '',
     email: '',
     password: '',
     password_confirmation: '',
@@ -21,6 +23,9 @@ const submit = () => {
         onFinish: () => form.reset('password', 'password_confirmation'),
     });
 };
+
+const country = ref();
+const region = ref();
 </script>
 
 <template>
@@ -67,6 +72,14 @@ const submit = () => {
                         placeholder="Confirm password"
                     />
                     <InputError :message="form.errors.password_confirmation" />
+                </div>
+
+                <div class="grid gap-2">
+                    <Label for="country">Country</Label>
+                    <!-- <Input id="country" type="country" required :tabindex="5" autocomplete="country" v-model="form.country" placeholder="Select a country" /> -->
+                    <country-select v-model="form.country" :country="country" topCountry="US" />
+                    <region-select v-model="form.region" :country="country" :region="region" />
+                    <InputError :message="form.errors.country" />
                 </div>
 
                 <Button type="submit" class="mt-2 w-full" tabindex="5" :disabled="form.processing">
