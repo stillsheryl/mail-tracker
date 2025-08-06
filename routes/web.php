@@ -15,6 +15,7 @@ Route::get('dashboard', function () {
 
 Route::get('outgoing', function () {
     $outgoing = Outgoing::where('user_id', auth()->id())
+        ->where('has_been_sent', true)
         ->orderBy('date', 'desc')
         ->get();
         
@@ -31,6 +32,30 @@ Route::post('outgoing', [OutgoingController::class, 'store'])
 Route::patch('outgoing/{outgoing}/thanked', [OutgoingController::class, 'updateThanked'])
     ->middleware(['auth', 'verified'])
     ->name('outgoing.updateThanked');
+
+Route::patch('outgoing/{outgoing}/has-been-sent', [OutgoingController::class, 'updateHasBeenSent'])
+    ->middleware(['auth', 'verified'])
+    ->name('outgoing.updateHasBeenSent');
+
+Route::get('received', function () {
+    return Inertia::render('Received');
+})->middleware(['auth', 'verified'])->name('received');
+
+Route::get('offers', function () {
+    $outgoing = Outgoing::where('user_id', auth()->id())
+        ->where('has_been_sent', false)
+        ->orderBy('date', 'desc')
+        ->get();
+        
+    return Inertia::render('Offers', [
+        'success' => session('success'),
+        'outgoing' => $outgoing,
+    ]);
+})->middleware(['auth', 'verified'])->name('offers');
+
+Route::get('analytics', function () {
+    return Inertia::render('Analytics');
+})->middleware(['auth', 'verified'])->name('analytics');
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

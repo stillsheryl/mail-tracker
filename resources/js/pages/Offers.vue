@@ -74,10 +74,39 @@ const toggleThanked = async (record: OutgoingRecord) => {
     }
 };
 
+// Toggle has_been_sent status
+const toggleHasBeenSent = async (record: OutgoingRecord) => {
+    const originalStatus = record.has_been_sent;
+    
+    // Optimistic update - remove from current list immediately
+    const recordIndex = outgoingRecords.value.findIndex((r: OutgoingRecord) => r.id === record.id);
+    if (recordIndex !== -1) {
+        // Remove from offers list since it will move to sent
+        outgoingRecords.value.splice(recordIndex, 1);
+    }
+
+    try {
+        // Make API request to update the database
+        await fetch(route('outgoing.updateHasBeenSent', { outgoing: record.id }), {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                'Accept': 'application/json',
+            },
+        });
+    } catch (error) {
+        // Revert optimistic update on error - add record back to list
+        if (recordIndex !== -1) {
+            outgoingRecords.value.splice(recordIndex, 0, record);
+        }
+        console.error('Failed to update has_been_sent status:', error);
+    }
+};
 </script>
 
 <template>
-    <Head title="Outgoing Mail" />
+    <Head title="Offers" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <!-- Success Message -->
@@ -87,7 +116,7 @@ const toggleThanked = async (record: OutgoingRecord) => {
         
         <div class="mb-6 flex items-center">
             <div class="grow text-3xl font-bold">
-                Outgoing Mail
+                Offers
             </div>
             <button id="show-modal" @click="showModal = true" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                 Add outgoing mail
@@ -95,7 +124,7 @@ const toggleThanked = async (record: OutgoingRecord) => {
             <AddOutgoing :open="showModal" @close="showModal = false" />
         </div>
 
-        <!-- Outgoing Mail Table -->
+        <!-- Offers Table -->
         <div>
             <div v-if="outgoingRecords && outgoingRecords.length > 0" class="overflow-x-auto shadow-md rounded-lg">
                 <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
@@ -144,9 +173,13 @@ const toggleThanked = async (record: OutgoingRecord) => {
                                 </button>
                             </td>
                             <td class="px-6 py-4">
-                                <span class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-green-100 text-green-800 border border-green-300">
-                                    ✓ Sent
-                                </span>
+                                <button 
+                                    @click="toggleHasBeenSent(record)"
+                                    class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-200 cursor-pointer hover:shadow-md bg-orange-100 text-orange-800 hover:bg-orange-200 border border-orange-300"
+                                    title="Click to mark as sent and move to Sent page"
+                                >
+                                    <span>📮 Send</span>
+                                </button>
                             </td>
                         </tr>
                     </tbody>
@@ -155,12 +188,12 @@ const toggleThanked = async (record: OutgoingRecord) => {
             
             <!-- Empty State -->
             <div v-else class="text-center py-12">
-                <div class="text-gray-500 text-lg mb-4">No outgoing mail records yet</div>
-                <p class="text-gray-400 mb-6">Start by adding your first outgoing mail record.</p>
+                <div class="text-gray-500 text-lg mb-4">No pending offers yet</div>
+                <p class="text-gray-400 mb-6">Start by adding your first outgoing mail offer.</p>
                 <button @click="showModal = true" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                    Add Your First Record
+                    Add Your First Offer
                 </button>
             </div>
         </div>
     </AppLayout>
-</template>
+</template> 

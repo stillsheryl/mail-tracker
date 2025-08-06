@@ -90,7 +90,7 @@ class OutgoingController extends Controller
     public function updateThanked(Outgoing $outgoing)
     {
         // Ensure the outgoing record belongs to the authenticated user
-        if ($outgoing->user_id !== auth()->id()) {
+        if ($outgoing->user_id != auth()->id()) {
             abort(403, 'Unauthorized');
         }
 
@@ -102,6 +102,27 @@ class OutgoingController extends Controller
         return response()->json([
             'id' => $outgoing->id,
             'thanked' => $outgoing->thanked,
+        ]);
+    }
+
+    /**
+     * Update the has_been_sent status of an outgoing mail record.
+     */
+    public function updateHasBeenSent(Outgoing $outgoing)
+    {
+        // Ensure the outgoing record belongs to the authenticated user
+        if ($outgoing->user_id != auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Toggle the has_been_sent status
+        $outgoing->has_been_sent = !$outgoing->has_been_sent;
+        $outgoing->save();
+
+        // Return the updated record for frontend update
+        return response()->json([
+            'id' => $outgoing->id,
+            'has_been_sent' => $outgoing->has_been_sent,
         ]);
     }
 }
