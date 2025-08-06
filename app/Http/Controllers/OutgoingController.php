@@ -33,10 +33,18 @@ class OutgoingController extends Controller
     public function store(StoreOutgoingRequest $request)
     {
         $validated = $request->validated();
+        
+        // Add the authenticated user's ID
+        $validated['user_id'] = auth()->id();
+        
+        // Set default values for boolean fields
+        $validated['thanked'] = $validated['thanked'] ?? false;
+        $validated['has_been_sent'] = $validated['has_been_sent'] ?? false;
 
         $outgoing = Outgoing::create($validated);
 
-        return response()->json(new OutgoingResource($outgoing), 201);
+        // For Inertia.js, return a redirect back to the page
+        return redirect()->route('outgoing')->with('success', 'Outgoing mail created successfully!');
     }
 
     /**
@@ -74,5 +82,26 @@ class OutgoingController extends Controller
         $outgoing = Outgoing::findOrFail($id);
         $outgoing->delete();
         return response()->json(null, 204);
+    }
+
+    /**
+     * Update the thanked status of an outgoing mail record.
+     */
+    public function updateThanked(Outgoing $outgoing)
+    {
+        // Ensure the outgoing record belongs to the authenticated user
+        if ($outgoing->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Toggle the thanked status
+        $outgoing->thanked = !$outgoing->thanked;
+        $outgoing->save();
+
+        // Return the updated record for frontend update
+        return response()->json([
+            'id' => $outgoing->id,
+            'thanked' => $outgoing->thanked,
+        ]);
     }
 }

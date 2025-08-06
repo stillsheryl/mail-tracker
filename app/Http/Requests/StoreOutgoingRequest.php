@@ -22,18 +22,17 @@ class StoreOutgoingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // 'user_id' => ,
             'username' => 'required|string|max:150',
-            'name' => 'string|max:150',
-            'date' => 'required|string|max:150',
+            'name' => 'nullable|string|max:150',
+            'date' => 'required|date',
             'country' => 'required|string|max:150',
-            'region' => 'string|max:150',
-            'city' => 'string|max:150',
-            'thanked' => 'boolean', // will need to default to false
-            'has_been_sent' => 'boolean', // will need to default to false
-            'occasion' => 'string|max:350',
-            'description' => 'string|max:1500',
-            'link' => 'url|max:400',
+            'region' => 'nullable|string|max:150',
+            'city' => 'nullable|string|max:150',
+            'thanked' => 'nullable|boolean',
+            'has_been_sent' => 'nullable|boolean',
+            'occasion' => 'nullable|string|max:350',
+            'description' => 'nullable|string|max:1500',
+            'link' => 'nullable|url|max:400',
         ];
     }
 

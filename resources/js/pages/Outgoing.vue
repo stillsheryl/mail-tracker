@@ -2,9 +2,29 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
-import PlaceholderPattern from '../components/PlaceholderPattern.vue';
 import AddOutgoing from '@/components/outgoing/AddOutgoing.vue';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+
+type OutgoingRecord = {
+    id: number;
+    date: string;
+    username: string;
+    name?: string;
+    city?: string;
+    region?: string;
+    country: string;
+    occasion?: string;
+    description?: string;
+    thanked: boolean;
+    has_been_sent: boolean;
+    created_at: string;
+    updated_at: string;
+};
+
+const props = defineProps<{
+    success?: string;
+    outgoing?: OutgoingRecord[];
+}>();
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -15,12 +35,56 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const showModal = ref(false);
 
+// Create a reactive copy of the outgoing records for optimistic updates
+const outgoingRecords = ref<OutgoingRecord[]>(props.outgoing || []);
+
+// Watch for prop changes and update reactive records when new data comes from server
+watch(() => props.outgoing, (newOutgoing: OutgoingRecord[] | undefined) => {
+    if (newOutgoing) {
+        outgoingRecords.value = [...newOutgoing];
+    }
+}, { immediate: true });
+
+// Toggle thanked status
+const toggleThanked = async (record: OutgoingRecord) => {
+    const originalThanked = record.thanked;
+    
+    // Optimistic update - update UI immediately
+    const recordIndex = outgoingRecords.value.findIndex((r: OutgoingRecord) => r.id === record.id);
+    if (recordIndex !== -1) {
+        outgoingRecords.value[recordIndex].thanked = !originalThanked;
+    }
+
+    try {
+        // Make API request to update the database
+        await fetch(route('outgoing.updateThanked', { outgoing: record.id }), {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                'Accept': 'application/json',
+            },
+        });
+    } catch (error) {
+        // Revert optimistic update on error
+        if (recordIndex !== -1) {
+            outgoingRecords.value[recordIndex].thanked = originalThanked;
+        }
+        console.error('Failed to update thanked status:', error);
+    }
+};
+
 </script>
 
 <template>
     <Head title="Outgoing Mail" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
+        <!-- Success Message -->
+        <div v-if="success" class="m-5 mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
+            {{ success }}
+        </div>
+        
         <div class="m-5 flex items-center">
             <div class="grow text-3xl font-bold">
                 Outgoing Mail
@@ -28,18 +92,69 @@ const showModal = ref(false);
             <button id="show-modal" @click="showModal = true" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                 Add outgoing mail
             </button>
-            <!-- use the modal component, pass in the prop -->
-            <AddOutgoing v-if="showModal" @close="showModal = false" />
-
-            <!-- <a href="https://www.name.com">
-                Click me
-            </a> -->
-
+            <AddOutgoing :open="showModal" @close="showModal = false" />
         </div>
-        <div class="flex h-full flex-1 flex-col-3 gap-4 rounded-xl p-4 overflow-x-auto">
-            <div>Search by username</div>
-            <div>All countries</div>
-            <div>All time</div>
+
+        <!-- Outgoing Mail Table -->
+        <div class="m-5">
+            <div v-if="outgoingRecords && outgoingRecords.length > 0" class="overflow-x-auto shadow-md rounded-lg">
+                <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Date</th>
+                            <th scope="col" class="px-6 py-3">Username</th>
+                            <th scope="col" class="px-6 py-3">Name</th>
+                            <th scope="col" class="px-6 py-3">City</th>
+                            <th scope="col" class="px-6 py-3">State</th>
+                            <th scope="col" class="px-6 py-3">Country</th>
+                            <th scope="col" class="px-6 py-3">Occasion</th>
+                            <th scope="col" class="px-6 py-3">Description</th>
+                            <th scope="col" class="px-6 py-3">Thanked</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="record in outgoingRecords" :key="record.id" class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">
+                                {{ new Date(record.date).toLocaleDateString() }}
+                            </td>
+                            <td class="px-6 py-4">{{ record.username }}</td>
+                            <td class="px-6 py-4">{{ record.name || '-' }}</td>
+                            <td class="px-6 py-4">{{ record.city || '-' }}</td>
+                            <td class="px-6 py-4">{{ record.region || '-' }}</td>
+                            <td class="px-6 py-4">{{ record.country }}</td>
+                            <td class="px-6 py-4">{{ record.occasion || '-' }}</td>
+                            <td class="px-6 py-4">
+                                <div class="max-w-xs truncate" :title="record.description">
+                                    {{ record.description || '-' }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <button 
+                                    @click="toggleThanked(record)"
+                                    :class="[
+                                        'inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium transition-colors duration-200 cursor-pointer hover:shadow-md',
+                                        record.thanked 
+                                            ? 'bg-green-100 text-green-800 hover:bg-green-200 border border-green-300' 
+                                            : 'bg-red-100 text-red-800 hover:bg-red-200 border border-red-300'
+                                    ]"
+                                >
+                                    <span v-if="record.thanked">✓ Yes</span>
+                                    <span v-else>✗ No</span>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Empty State -->
+            <div v-else class="text-center py-12">
+                <div class="text-gray-500 text-lg mb-4">No outgoing mail records yet</div>
+                <p class="text-gray-400 mb-6">Start by adding your first outgoing mail record.</p>
+                <button @click="showModal = true" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    Add Your First Record
+                </button>
+            </div>
         </div>
     </AppLayout>
 </template>
